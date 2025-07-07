@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  pokemon-explorer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pokemon-explorer-app
+    ports:
+      - "8080:8000"  # Host port 8080 maps to container port 8000
+    restart: unless-stopped
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=8000
+    volumes:
+      - ./logs:/var/log/nginx  # optional: log mount for debugging
+    networks:
+      - pokemon-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pokemon.rule=Host(`pokemon.localhost`)"
+      - "traefik.http.services.pokemon.loadbalancer.server.port=8000"
+
+  traefik:
+    image: traefik:v2.10
+    container_name: pokemon-traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8088:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik:/etc/traefik
+    networks:
+      - pokemon-network
+    profiles:
+      - production
+
+networks:
+  pokemon-network:
+    driver: bridge
+
+volumes:
+  logs:
+    driver: local
