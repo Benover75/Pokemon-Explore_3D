@@ -1,3 +1,0 @@
-🎯 Make Commands Reference
-CommandDescriptionmake buildBuild Docker imagemake upStart applicationmake downStop applicationmake logsView logsmake cleanClean up resourcesmake restartRestart applicationmake shellOpen container shellmake healthCheck health statusmake devBuild and start (development)make prodStart production environmentmake backupBackup application data
-This containerized setup provides a robust, scalable, and maintainable deployment solution for your Pokémon Explorer application. The configuration is production-ready while remaining simple enough for development use.

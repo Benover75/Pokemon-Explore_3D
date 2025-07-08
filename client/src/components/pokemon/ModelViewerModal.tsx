@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, RotateCcw, Play, Maximize, Pause, Volume2, Settings } from 'lucide-react';
+import { useSettings } from '@/hooks/use-settings';
 
 interface ModelViewerModalProps {
   isOpen: boolean;
@@ -8,32 +9,30 @@ interface ModelViewerModalProps {
 }
 
 export default function ModelViewerModal({ isOpen, pokemonName, onClose }: ModelViewerModalProps) {
-  const [isRotating, setIsRotating] = useState(true);
-  const [viewAngle, setViewAngle] = useState({ x: 0, y: 0 });
+  // Remove all animation state
+  // const [bobOffset, setBobOffset] = useState(0);
+  // const [bobbing, setBobbing] = useState(true);
+  const [isFlashing, setIsFlashing] = useState(false);
   const viewerRef = useRef<HTMLDivElement>(null);
+  const { settings } = useSettings();
 
+  // Flash every 10 seconds for 0.5s
   useEffect(() => {
     if (!isOpen) return;
-    
+    let flashTimeout: NodeJS.Timeout;
     const interval = setInterval(() => {
-      if (isRotating) {
-        setViewAngle(prev => ({
-          x: prev.x + 0.5,
-          y: prev.y + 0.3
-        }));
-      }
-    }, 50);
+      setIsFlashing(true);
+      flashTimeout = setTimeout(() => setIsFlashing(false), 500);
+    }, 10000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(flashTimeout);
+      setIsFlashing(false);
+    };
+  }, [isOpen]);
 
-    return () => clearInterval(interval);
-  }, [isOpen, isRotating]);
-
-  const resetView = () => {
-    setViewAngle({ x: 0, y: 0 });
-  };
-
-  const toggleRotation = () => {
-    setIsRotating(!isRotating);
-  };
+  const resetView = () => {};
+  const toggleBobbing = () => {};
 
   if (!isOpen) return null;
 
@@ -82,10 +81,11 @@ export default function ModelViewerModal({ isOpen, pokemonName, onClose }: Model
             {/* Central 3D Platform */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div 
-                className="relative"
+                className={`relative${isFlashing ? ' flash' : ''}`}
                 style={{
-                  transform: `perspective(1000px) rotateX(${viewAngle.x}deg) rotateY(${viewAngle.y}deg)`,
-                  transformStyle: 'preserve-3d'
+                  // No transform, no animation
+                  transition: 'box-shadow 0.3s, filter 0.3s',
+                  willChange: 'box-shadow, filter',
                 }}
               >
                 {/* Platform Base */}
@@ -111,7 +111,7 @@ export default function ModelViewerModal({ isOpen, pokemonName, onClose }: Model
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center text-white">
                       <div 
-                        className="w-32 h-32 mx-auto mb-6 glass rounded-full flex items-center justify-center animate-float"
+                        className="w-32 h-32 mx-auto mb-6 glass rounded-full flex items-center justify-center"
                         style={{
                           background: 'radial-gradient(circle at 30% 30%, rgba(0, 212, 255, 0.4), rgba(233, 69, 96, 0.2))',
                           boxShadow: '0 0 40px rgba(0, 212, 255, 0.6)'
@@ -147,14 +147,7 @@ export default function ModelViewerModal({ isOpen, pokemonName, onClose }: Model
             </div>
 
             {/* Floating UI Elements */}
-            <div className="absolute top-4 right-4 space-y-2">
-              <div className="glass-dark rounded-lg px-3 py-2 text-xs text-white">
-                X: {Math.round(viewAngle.x)}° Y: {Math.round(viewAngle.y)}°
-              </div>
-              <div className="glass-dark rounded-lg px-3 py-2 text-xs text-[hsl(193,100%,50%)]">
-                {isRotating ? 'AUTO ROTATE' : 'MANUAL MODE'}
-              </div>
-            </div>
+            {/* Removed bobbing/offset display */}
           </div>
 
           {/* Control Panel */}
@@ -168,11 +161,12 @@ export default function ModelViewerModal({ isOpen, pokemonName, onClose }: Model
             </button>
             
             <button 
-              onClick={toggleRotation}
+              onClick={toggleBobbing}
               className="glass-dark rounded-xl px-4 py-3 text-white hover:bg-white hover:bg-opacity-20 transition-all flex items-center justify-center gap-2 hover:scale-105"
+              disabled
             >
-              {isRotating ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-              <span className="text-sm font-medium">{isRotating ? 'Pause' : 'Play'}</span>
+              <Pause className="w-5 h-5" />
+              <span className="text-sm font-medium">Paused</span>
             </button>
             
             <button className="glass-dark rounded-xl px-4 py-3 text-white hover:bg-white hover:bg-opacity-20 transition-all flex items-center justify-center gap-2 hover:scale-105">
@@ -191,20 +185,32 @@ export default function ModelViewerModal({ isOpen, pokemonName, onClose }: Model
             <h4 className="font-orbitron font-bold text-white mb-2">3D Model Specifications</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
+                <p className="text-gray-400">Quality</p>
+                <p className="text-[hsl(193,100%,50%)] font-mono capitalize">{settings.quality}</p>
+              </div>
+              <div>
                 <p className="text-gray-400">Polygons</p>
-                <p className="text-[hsl(193,100%,50%)] font-mono">12,847</p>
+                <p className="text-[hsl(193,100%,50%)] font-mono">
+                  {settings.quality === 'low' ? '6,423' : 
+                   settings.quality === 'medium' ? '9,635' : 
+                   settings.quality === 'high' ? '12,847' : '18,256'}
+                </p>
               </div>
               <div>
                 <p className="text-gray-400">Vertices</p>
-                <p className="text-[hsl(193,100%,50%)] font-mono">8,432</p>
+                <p className="text-[hsl(193,100%,50%)] font-mono">
+                  {settings.quality === 'low' ? '4,216' : 
+                   settings.quality === 'medium' ? '6,324' : 
+                   settings.quality === 'high' ? '8,432' : '12,648'}
+                </p>
               </div>
               <div>
                 <p className="text-gray-400">Textures</p>
-                <p className="text-[hsl(193,100%,50%)] font-mono">4K UHD</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Format</p>
-                <p className="text-[hsl(193,100%,50%)] font-mono">GLB/GLTF</p>
+                <p className="text-[hsl(193,100%,50%)] font-mono">
+                  {settings.quality === 'low' ? '1K' : 
+                   settings.quality === 'medium' ? '2K' : 
+                   settings.quality === 'high' ? '4K UHD' : '8K UHD'}
+                </p>
               </div>
             </div>
           </div>
